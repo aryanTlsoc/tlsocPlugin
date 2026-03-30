@@ -38,6 +38,17 @@ once only
 yarn start --dev --no-cache --plugin-path="plugins/nameOfplugin"--elasticsearch.hosts=https://10.130.171.246:9200 --elasticsearch.username=name --elasticsearch.password=pass --elasticsearch.ssl.verificationMode=none --xpack.encryptedSavedObjects.encryptionKey=key
 ```
 
+## Dev tool
+
+Query the alert security index: 
+
+```
+GET .alerts-security.alerts-tlsoc*/_search
+{
+  "size": 1,
+  "_source": true
+}
+```
 
 ## Scripts
 
