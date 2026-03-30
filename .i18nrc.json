@@ -1,0 +1,7 @@
+{
+  "prefix": "tlsocPlugin",
+  "paths": {
+    "tlsocPlugin": "."
+  },
+  "translations": ["translations/ja-JP.json"]
+}

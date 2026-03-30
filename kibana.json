@@ -1,0 +1,14 @@
+{
+  "id": "tlsocPlugin",
+  "version": "1.0.0",
+  "kibanaVersion": "kibana",
+  "owner": {
+    "name": "soctl",
+    "githubTeam": ""
+  },
+  "description": "Customized",
+  "server": true,
+  "ui": true,
+  "requiredPlugins": ["navigation"],
+  "optionalPlugins": []
+}
