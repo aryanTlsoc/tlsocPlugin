@@ -6,6 +6,7 @@ import type { IScopedClusterClient, Logger } from '@kbn/core/server';
 import type {
   AlertsByMitre,
   AlertsByRule,
+  AlertsByServer,
   AlertsBySeverity,
   AlertsByUser,
   AlertsOverTime,
@@ -15,6 +16,7 @@ import type {
 import {
   buildAlertsOverTimeQuery,
   buildAlertsBySeverityQuery,
+  buildAlertsByServerQuery,
   buildTopRulesQuery,
   buildTopUsersQuery,
   buildMitreTacticsQuery,
@@ -25,6 +27,7 @@ import {
 import {
   parseAlertsOverTime,
   parseAlertsBySeverity,
+  parseAlertsByServer,
   parseTopRules,
   parseTopUsers,
   parseMitreTactics,
@@ -37,6 +40,7 @@ import {
  */
 export interface DashboardEsClientIndices {
   alertsIndex: string;
+  severityIndex?: string;
 }
 
 /**
@@ -79,7 +83,8 @@ export class DashboardEsClient {
     this.logger.debug(`DashboardEsClient.${operationName} query: ${JSON.stringify(query)}`);
     try {
       const response = await this.esClient.asCurrentUser.search(query);
-      return parser(response as estypes.SearchResponse<unknown>);
+      const parsedResponse = ((response as { body?: unknown }).body ?? response) as estypes.SearchResponse<unknown>;
+      return parser(parsedResponse);
     } catch (error) {
       this.logger.error(`DashboardEsClient.${operationName} failed: ${(error as Error).message}`);
       throw new DashboardEsError(operationName, error);
@@ -98,7 +103,7 @@ export class DashboardEsClient {
    * Returns counts by severity.
    */
   public async getAlertsBySeverity(params: TimeRangeParams): Promise<AlertsBySeverity> {
-    const query = buildAlertsBySeverityQuery({ ...params, index: this.indices.alertsIndex });
+    const query = buildAlertsBySeverityQuery({ ...params, index: this.indices.severityIndex ?? this.indices.alertsIndex });
     return this.runQuery('getAlertsBySeverity', query, parseAlertsBySeverity);
   }
 
@@ -116,6 +121,14 @@ export class DashboardEsClient {
   public async getTopUsers(params: TimeRangeParams): Promise<AlertsByUser> {
     const query = buildTopUsersQuery({ ...params, index: this.indices.alertsIndex });
     return this.runQuery('getTopUsers', query, parseTopUsers);
+  }
+
+  /**
+   * Returns alerts aggregated by observed server.
+   */
+  public async getAlertsByServer(params: TimeRangeParams): Promise<AlertsByServer> {
+    const query = buildAlertsByServerQuery({ ...params, index: this.indices.alertsIndex });
+    return this.runQuery('getAlertsByServer', query, parseAlertsByServer);
   }
 
   /**
@@ -147,11 +160,12 @@ export class DashboardEsClient {
    */
   public async getDashboardMetrics(params: TimeRangeParams): Promise<DashboardMetrics> {
     this.logger.debug('DashboardEsClient.getDashboardMetrics starting parallel collection');
-    const [alertsOverTime, bySeverity, byRule, byUser, byMitre, recentHighRisk, summary] = await Promise.all([
+    const [alertsOverTime, bySeverity, byRule, byUser, byServer, byMitre, recentHighRisk, summary] = await Promise.all([
       this.getAlertsOverTime(params),
       this.getAlertsBySeverity(params),
       this.getTopRules(params),
       this.getTopUsers(params),
+      this.getAlertsByServer(params),
       this.getMitreTactics(params),
       this.getRecentHighRisk(params),
       this.getSummaryCounts(params),
@@ -165,6 +179,7 @@ export class DashboardEsClient {
       bySeverity,
       byRule,
       byUser,
+      byServer,
       byMitre,
       recentHighRisk,
     };
