@@ -50,6 +50,8 @@ export type AlertsByUser = Array<{ userName: string; count: number }>;
 
 export type AlertsByMitre = Array<{ tacticName: string; count: number }>;
 
+export type AlertsByServer = Array<{ serverName: string; count: number }>;
+
 export interface DashboardMetrics {
   total: number;
   openCount: number;
@@ -58,6 +60,7 @@ export interface DashboardMetrics {
   bySeverity: AlertsBySeverity;
   byRule: AlertsByRule;
   byUser: AlertsByUser;
+  byServer: AlertsByServer;
   byMitre: AlertsByMitre;
   recentHighRisk: SecurityAlert[];
 }
