@@ -96,7 +96,7 @@ const WINDOW_OPTIONS: Array<{ value: WindowValue; text: string }> = [
   { value: 'now-90d', text: 'Last 90 days' },
 ];
 
-const LIVE_REFRESH_MS = 5000;
+const LIVE_REFRESH_MS = 30000;
 
 // Dark-blue chart theme compatible with @elastic/charts
 const DARK_CHART_THEME = {
@@ -159,6 +159,7 @@ const MetricCard: React.FC<{
 // Main App
 // ─────────────────────────────────────────────────────────────────────────────
 export const TlsocPluginApp = ({ basename, notifications, http, navigation }: TlsocPluginAppDeps) => {
+  const isMounted = useRef(true);
   const [dashboard,    setDashboard]    = useState<DashboardMetrics | null>(null);
   const [windowFrom,   setWindowFrom]   = useState<WindowValue>('now-1w');
   const [lastUpdated,  setLastUpdated]  = useState<string>('');
@@ -175,6 +176,12 @@ export const TlsocPluginApp = ({ basename, notifications, http, navigation }: Tl
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   // ── API CALL ──────────────────────────────────────────────────────────────
   // Calls your real Kibana server-side route:
   //    GET /api/tlsoc_plugin/dashboard/metrics?from_date=now-15m&to_date=now
@@ -185,14 +192,24 @@ export const TlsocPluginApp = ({ basename, notifications, http, navigation }: Tl
   //       day (midnight UTC), giving you all alerts from today so far.
   const loadDashboard = useCallback(
     async (silent = false) => {
+      if (!isMounted.current) {
+        return;
+      }
+
       silent ? setIsRefreshing(true) : setIsLoading(true);
       setError('');
       try {
         const query = { from_date: windowFrom, to_date: 'now' };
         const res   = await http.get('/api/tlsoc_plugin/dashboard/metrics', { query });
+        if (!isMounted.current) {
+          return;
+        }
         setDashboard(res as DashboardMetrics);
         setLastUpdated(new Date().toLocaleTimeString());
       } catch (err) {
+        if (!isMounted.current) {
+          return;
+        }
         const msg = err instanceof Error
           ? err.message
           : i18n.translate('tlsocPlugin.dashboardUnknownError', { defaultMessage: 'Unknown error' });
@@ -202,6 +219,9 @@ export const TlsocPluginApp = ({ basename, notifications, http, navigation }: Tl
           text:  msg,
         });
       } finally {
+        if (!isMounted.current) {
+          return;
+        }
         setIsLoading(false);
         setIsRefreshing(false);
       }

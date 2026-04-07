@@ -377,26 +377,6 @@ export const buildRecentHighRiskQuery = (params: TimeRangeParams): estypes.Searc
   ignore_unavailable: true,
   expand_wildcards: ['open', 'hidden'],
   size: 20,
-  runtime_mappings: {
-    risk_score_normalized: {
-      type: 'double',
-      script: {
-        source: `
-          if (doc.containsKey('kibana.alert.risk_score') && !doc['kibana.alert.risk_score'].empty) {
-            emit((double) doc['kibana.alert.risk_score'].value);
-            return;
-          }
-
-          if (doc.containsKey('risk_score') && !doc['risk_score'].empty) {
-            emit((double) doc['risk_score'].value);
-            return;
-          }
-
-          emit(0.0);
-        `,
-      },
-    },
-  },
   _source: [
     '@timestamp',
     'kibana.alert.severity',
@@ -431,7 +411,8 @@ export const buildRecentHighRiskQuery = (params: TimeRangeParams): estypes.Searc
     },
   },
   sort: [
-    { risk_score_normalized: { order: 'desc' } },
+    { 'kibana.alert.risk_score': { order: 'desc', unmapped_type: 'double' } },
+    { risk_score: { order: 'desc', unmapped_type: 'double' } },
     { '@timestamp': { order: 'desc' } },
   ],
 });
@@ -442,7 +423,6 @@ export const buildRecentHighRiskQuery = (params: TimeRangeParams): estypes.Searc
 export const buildSummaryCountsQuery = (params: TimeRangeParams): estypes.SearchRequest => ({
   index: params.index,
   size: 0,
-  track_total_hits: true,
   allow_no_indices: true,
   ignore_unavailable: true,
   expand_wildcards: ['open', 'hidden'],
