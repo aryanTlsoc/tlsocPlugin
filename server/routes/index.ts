@@ -2,15 +2,13 @@ import { IRouter, Logger } from '../../../../src/core/server';
 import { schema } from '@kbn/config-schema';
 import { AlertsResponse } from '../types';
 import { createDashboardEsClient } from '../lib/es_client/dashboard_es_client';
-
-const ALERTS_INDEX = '.alerts-security*';
-const SEVERITY_INDEX = 'tlsoc-alerts-*';
+import type { TlsocPluginConfig } from '../config';
 
 const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error);
 };
 
-export function defineRoutes(router: IRouter, logger: Logger) {
+export function defineRoutes(router: IRouter, logger: Logger, config: TlsocPluginConfig) {
   logger.info('[tlsocPlugin] Registering routes');
 
   router.get(
@@ -99,7 +97,7 @@ export function defineRoutes(router: IRouter, logger: Logger) {
         }
 
         const esQuery = {
-          index: ALERTS_INDEX,
+          index: config.alertsIndex,
           body: {
             from,
             size,
@@ -143,7 +141,7 @@ export function defineRoutes(router: IRouter, logger: Logger) {
         const { id } = request.params;
 
         const esQuery = {
-          index: ALERTS_INDEX,
+          index: config.alertsIndex,
           body: {
             query: {
               term: { 'kibana.alert.uuid': id },
@@ -207,7 +205,7 @@ export function defineRoutes(router: IRouter, logger: Logger) {
         }
 
         const esQuery = {
-          index: ALERTS_INDEX,
+          index: config.alertsIndex,
           body: {
             size: 0,
             query,
@@ -273,13 +271,13 @@ export function defineRoutes(router: IRouter, logger: Logger) {
           coreContext.elasticsearch.client,
           logger,
           {
-            alertsIndex: ALERTS_INDEX,
-            severityIndex: SEVERITY_INDEX,
+            alertsIndex: config.alertsIndex,
+            severityIndex: config.severityIndex,
           }
         );
 
         const dashboard = await client.getDashboardMetrics({
-          index: ALERTS_INDEX,
+          index: config.alertsIndex,
           from: from_date ?? 'now-90d',
           to: to_date ?? 'now',
         });
@@ -314,11 +312,11 @@ export function defineRoutes(router: IRouter, logger: Logger) {
         const client = createDashboardEsClient(
           coreContext.elasticsearch.client,
           logger,
-          { alertsIndex: ALERTS_INDEX }
+          { alertsIndex: config.alertsIndex }
         );
 
         const result = await client.getAlertsByServer({
-          index: ALERTS_INDEX,
+          index: config.alertsIndex,
           from: from_date ?? 'now-90d',
           to: to_date ?? 'now',
         });

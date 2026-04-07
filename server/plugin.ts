@@ -6,14 +6,17 @@ import {
   Logger,
 } from '../../../src/core/server';
 
+import type { TlsocPluginConfig } from './config';
 import { TlsocPluginPluginSetup, TlsocPluginPluginStart } from './types';
 import { defineRoutes } from './routes';
 
 export class TlsocPluginPlugin implements Plugin<TlsocPluginPluginSetup, TlsocPluginPluginStart> {
   private readonly logger: Logger;
+  private readonly config: TlsocPluginConfig;
 
   constructor(initializerContext: PluginInitializerContext) {
     this.logger = initializerContext.logger.get();
+    this.config = initializerContext.config.get<TlsocPluginConfig>();
   }
 
   public setup(core: CoreSetup) {
@@ -42,7 +45,7 @@ export class TlsocPluginPlugin implements Plugin<TlsocPluginPluginSetup, TlsocPl
     console.log('[tlsocPlugin] Router created - defining routes');
 
     // Register server side APIs
-    defineRoutes(router, this.logger);
+    defineRoutes(router, this.logger, this.config);
     console.log('[tlsocPlugin] Routes defined');
 
     return {};
