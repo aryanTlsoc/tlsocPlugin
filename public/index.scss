@@ -1,0 +1,641 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// TLSOC Dashboard — Deep Blue Theme
+// Font: IBM Plex Mono (via Kibana's asset pipeline or CDN)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Design tokens
+$blue-950: #02101f;
+$blue-900: #061727;
+$blue-850: #0a2040;
+$blue-800: #0d2b58;
+$blue-700: #103370;
+$blue-600: #1a4aad;
+$blue-500: #2563eb;
+$blue-400: #3b82f6;
+$blue-300: #60a5fa;
+$blue-200: #93c5fd;
+$blue-100: #dbeafe;
+
+$glass-bg:     rgba(13, 43, 94, 0.55);
+$glass-border: rgba(59, 130, 246, 0.22);
+$card-bg:      rgba(7, 25, 52, 0.85);
+$surface:      rgba(16, 51, 112, 0.22);
+
+$text-primary:   #e2eeff;
+$text-secondary: #8ab4d8;
+$text-muted:     #4a79b5;
+
+$c-critical: #bd271e;
+$c-high:     #cc5c20;
+$c-medium:   #b17825;
+$c-low:      #3d8c7a;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ROOT — deep blue page background
+// ═══════════════════════════════════════════════════════════════════════════
+.tlsocDashboard {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -5%,  rgba(37, 99, 235, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 45% at 92% 82%,  rgba(6, 182, 212, 0.07) 0%, transparent 50%),
+    radial-gradient(ellipse 45% 50% at  8% 90%,  rgba(139, 92, 246, 0.05) 0%, transparent 50%),
+    $blue-950;
+
+  // Subtle grid lines
+  &::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(59, 130, 246, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59, 130, 246, 0.035) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .euiPageTemplate__section {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HERO HEADER
+// ═══════════════════════════════════════════════════════════════════════════
+.tlsocHeroSection {
+  position: relative;
+  overflow: hidden;
+}
+
+.tlsocHeroBg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(118deg, #071730 0%, #0e2d5e 50%, #0b3050 100%);
+  border-bottom: 1px solid $glass-border;
+  z-index: 0;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 80% at 75% 50%, rgba(37, 99, 235, 0.18), transparent 70%);
+  }
+}
+
+// Animated scan line on hero
+.tlsocScanLine {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(96, 165, 250, 0.6) 50%, transparent 100%);
+  animation: scanDown 4s linear infinite;
+  z-index: 1;
+  pointer-events: none;
+}
+
+@keyframes scanDown {
+  0%   { top: 0%; opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.tlsocHeroContent {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+  flex-wrap: wrap;
+}
+
+.tlsocHeroLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  animation: slideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.tlsocLogoOrb {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, $blue-600, #22d3ee);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.35), 0 6px 20px rgba(37, 99, 235, 0.45);
+  animation: pulseOrb 2.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulseOrb {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.35), 0 6px 20px rgba(37, 99, 235, 0.4); }
+  50%       { box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.15), 0 8px 28px rgba(37, 99, 235, 0.65); }
+}
+
+.tlsocHeroTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: #f0f7ff;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.tlsocHeroSub {
+  font-size: 12px;
+  color: $text-muted;
+  margin: 2px 0 0;
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+}
+
+.tlsocHeroRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  animation: slideDown 0.6s 0.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+// ── Live pill
+.tlsocLivePill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4ade80;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 1px;
+}
+
+.tlsocLiveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ade80;
+  animation: blink 1.2s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.2; }
+}
+
+// ── Clock
+.tlsocClockBadge {
+  padding: 5px 12px;
+  background: $surface;
+  border: 1px solid $glass-border;
+  border-radius: 8px;
+  font-size: 12px;
+  color: $text-secondary;
+  font-family: 'IBM Plex Mono', monospace;
+  min-width: 80px;
+  text-align: center;
+}
+
+// ── KQL input
+.tlsocKqlInput {
+  min-width: 240px;
+
+  .euiFieldSearch {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: $glass-border !important;
+    color: $text-primary !important;
+
+    &::placeholder { color: $text-muted; }
+    &:focus        { border-color: $blue-400 !important; background: rgba(255, 255, 255, 0.1) !important; }
+  }
+}
+
+.tlsocWindowSelect {
+  min-width: 150px;
+
+  .euiSelect {
+    background: $surface !important;
+    border-color: $glass-border !important;
+    color: $text-primary !important;
+  }
+}
+
+.tlsocRefreshBtn {
+  background: $blue-600 !important;
+  border-color: $blue-400 !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+  transition: box-shadow 0.2s, transform 0.15s !important;
+
+  &:hover {
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.55) !important;
+    transform: translateY(-1px);
+  }
+}
+
+.tlsocTimeBadge {
+  font-size: 11px !important;
+  font-family: 'IBM Plex Mono', monospace !important;
+  color: $text-muted !important;
+  border-color: $glass-border !important;
+  white-space: nowrap;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN SECTION
+// ═══════════════════════════════════════════════════════════════════════════
+.tlsocMainSection {
+  padding: 20px 24px 48px !important;
+
+  .euiPageTemplate__section {
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+}
+
+// ── Loading
+.tlsocLoadingWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 80px 0;
+  color: $text-muted;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// METRIC CARDS
+// ═══════════════════════════════════════════════════════════════════════════
+.tlsocMetricRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.tlsocMetricCard {
+  position: relative;
+  padding: 20px 22px 22px;
+  min-height: 128px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  opacity: 0;
+  animation: cardReveal 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+  &--critical { background: linear-gradient(135deg, #8b1c14 0%, $c-critical 100%); }
+  &--high     { background: linear-gradient(135deg, #9e4012 0%, $c-high     100%); }
+  &--medium   { background: linear-gradient(135deg, #7c5719 0%, $c-medium   100%); }
+  &--low      { background: linear-gradient(135deg, #1e5c50 0%, $c-low      100%); }
+}
+
+@keyframes cardReveal {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+.tlsocMetricGlow {
+  position: absolute;
+  bottom: -20px;
+  right: -20px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+.tlsocMetricCardInner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.tlsocMetricHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.tlsocMetricTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.tlsocMetricIcon {
+  color: rgba(255, 255, 255, 0.55) !important;
+  flex-shrink: 0;
+}
+
+.tlsocMetricSubtitle {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 2px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.tlsocMetricValue {
+  font-size: 48px;
+  font-weight: 300;
+  color: #fff;
+  line-height: 1;
+  text-align: right;
+  margin-top: auto;
+  padding-top: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: -2px;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PANELS
+// ═══════════════════════════════════════════════════════════════════════════
+.tlsocPanel {
+  background: $card-bg;
+  border: 1px solid $glass-border;
+  border-radius: 14px;
+  padding: 18px 20px;
+  backdrop-filter: blur(10px);
+  transition: box-shadow 0.2s, transform 0.2s;
+
+  &:hover {
+    box-shadow: 0 10px 36px rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
+  }
+}
+
+// Fade+slide-up animation driven by CSS custom property --delay
+.tlsocPanelFade {
+  opacity: 0;
+  animation: panelReveal 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes panelReveal {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+// ── Panel header
+.tlsocPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 10px;
+}
+
+.tlsocPanelTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: $text-primary;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.2px;
+}
+
+// Animated pulse dot
+.tlsocPulse {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: $blue-400;
+  animation: blink 2s ease-in-out infinite;
+  flex-shrink: 0;
+
+  &--amber { background: #d6bf57; }
+}
+
+.tlsocBadge {
+  font-size: 11px;
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: $surface;
+  border: 1px solid $glass-border;
+  color: $blue-300;
+  white-space: nowrap;
+}
+
+// ── Chart area
+.tlsocChartArea {
+  width: 100%;
+  position: relative;
+
+  .echChart {
+    height: 100% !important;
+  }
+}
+
+.tlsocChartFooter {
+  font-size: 11px;
+  color: $text-muted;
+  text-align: center;
+  margin-top: 8px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LEGEND ROW (Alert Traffic)
+// ═══════════════════════════════════════════════════════════════════════════
+.tlsocLegendRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.tlsocLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+
+.tlsocLegendDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &--low      { background: #54b399; }
+  &--medium   { background: #d6bf57; }
+  &--high     { background: #da8b45; }
+  &--critical { background: #e7664c; }
+}
+
+.tlsocLegendLabel { color: $text-secondary; }
+.tlsocLegendCount { color: $text-primary; font-weight: 600; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TWO-COLUMN LAYOUT
+// ═══════════════════════════════════════════════════════════════════════════
+.tlsocTwoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THREAT SUMMARY GRID
+// ═══════════════════════════════════════════════════════════════════════════
+.tlsocSummaryGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.tlsocSummaryItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: $surface;
+  border: 1px solid $glass-border;
+  border-radius: 10px;
+  transition: background 0.15s;
+
+  &:hover { background: rgba(37, 99, 235, 0.12); }
+}
+
+.tlsocSummaryIcon {
+  color: $blue-400 !important;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.tlsocSummaryLabel {
+  font-size: 11px;
+  color: $text-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 3px;
+}
+
+.tlsocSummaryValue {
+  font-size: 18px;
+  font-weight: 600;
+  color: $text-primary;
+  font-family: 'IBM Plex Mono', monospace;
+  line-height: 1.1;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TABLES
+// ═══════════════════════════════════════════════════════════════════════════
+.tlsocTable {
+  .euiTable {
+    background: transparent !important;
+    font-size: 12px;
+  }
+
+  .euiTableHeaderCell {
+    background: transparent !important;
+
+    .euiTableCellContent__text {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+      color: $text-muted;
+    }
+  }
+
+  .euiTableRow {
+    background: transparent !important;
+    transition: background 0.12s;
+
+    &:hover td { background: rgba(59, 130, 246, 0.06) !important; }
+    &:last-child td { border-bottom: none; }
+  }
+
+  .euiTableRowCell {
+    color: $text-secondary !important;
+    border-bottom-color: rgba(59, 130, 246, 0.08) !important;
+  }
+}
+
+// Left-border severity colouring on alert table rows
+.tlsocAlertRow {
+  &--critical td:first-child { border-left: 3px solid $c-critical; padding-left: 8px; }
+  &--high     td:first-child { border-left: 3px solid $c-high;     padding-left: 8px; }
+  &--medium   td:first-child { border-left: 3px solid $c-medium;   padding-left: 8px; }
+  &--low      td:first-child { border-left: 3px solid $c-low;      padding-left: 8px; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BADGES
+// ═══════════════════════════════════════════════════════════════════════════
+.tlsocSevBadge {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  font-family: 'IBM Plex Mono', monospace !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  letter-spacing: 0.5px;
+
+  &--critical { background: rgba(189, 39, 30,  0.18) !important; color: #f87168 !important; border: 1px solid rgba(189, 39, 30,  0.4) !important; }
+  &--high     { background: rgba(204, 92, 32,  0.18) !important; color: #f59e0b !important; border: 1px solid rgba(204, 92, 32,  0.4) !important; }
+  &--medium   { background: rgba(177, 120, 37, 0.18) !important; color: #fbbf24 !important; border: 1px solid rgba(177, 120, 37, 0.4) !important; }
+  &--low      { background: rgba(61, 140, 122, 0.18) !important; color: #6ee7b7 !important; border: 1px solid rgba(61, 140, 122, 0.4) !important; }
+}
+
+.tlsocStatusBadge {
+  font-size: 10px !important;
+  font-family: 'IBM Plex Mono', monospace !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+
+  &--open          { background: rgba(239, 68, 68,  0.12) !important; color: #f87171 !important; }
+  &--investigating { background: rgba(251, 191, 36, 0.12) !important; color: #fbbf24 !important; }
+  &--closed        { background: rgba(74, 222, 128, 0.12) !important; color: #6ee7b7 !important; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UTILITY
+// ═══════════════════════════════════════════════════════════════════════════
+.tlsocMono {
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  font-size: 11px;
+}
+
+.tlsocTextMuted { color: $text-muted; }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GLOBAL ANIMATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RESPONSIVE
+// ═══════════════════════════════════════════════════════════════════════════
+@media (max-width: 1100px) {
+  .tlsocTwoCol { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 880px) {
+  .tlsocMetricRow       { grid-template-columns: repeat(2, 1fr); }
+  .tlsocMetricValue     { font-size: 36px; }
+  .tlsocHeroContent     { flex-direction: column; align-items: flex-start; }
+  .tlsocHeroRight       { width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .tlsocMetricRow { grid-template-columns: 1fr; }
+}

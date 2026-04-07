@@ -6,6 +6,7 @@ import type { estypes } from '@elastic/elasticsearch';
 import type {
   AlertsByMitre,
   AlertsByRule,
+  AlertsByServer,
   AlertsBySeverity,
   AlertsByUser,
   AlertsOverTime,
@@ -19,6 +20,22 @@ import type {
 
 const safeString = (value: unknown): string => (typeof value === 'string' ? value : '');
 const safeNumber = (value: unknown): number => (typeof value === 'number' ? value : Number(value) || 0);
+
+const getField = (source: Record<string, unknown>, path: string): unknown => {
+  if (Object.prototype.hasOwnProperty.call(source, path)) {
+    return source[path];
+  }
+
+  const parts = path.split('.');
+  let current: unknown = source;
+  for (const part of parts) {
+    if (!current || typeof current !== 'object' || Array.isArray(current)) {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current;
+};
 
 const normalizeSeverity = (value: unknown): AlertSeverity => {
   const str = (value as string | undefined)?.toString().toLowerCase();
@@ -105,14 +122,30 @@ export const parseAlertsOverTime = (esResponse: estypes.SearchResponse<unknown>)
  */
 export const parseAlertsBySeverity = (esResponse: estypes.SearchResponse<unknown>): AlertsBySeverity => {
   const aggs = esResponse.aggregations as Record<string, unknown> | undefined;
-  const buckets = (((aggs?.by_severity as Record<string, unknown> | undefined)?.buckets as unknown[]) ?? []) as unknown[];
-  return buckets.map((bucket) => {
-    const item = bucket as Record<string, unknown>;
-    return {
-      severity: normalizeSeverity(item.key),
-      count: safeNumber(item.doc_count),
-    };
-  });
+  const bySeverityAgg = aggs?.by_severity as Record<string, unknown> | undefined;
+  const rawBuckets = bySeverityAgg?.buckets;
+
+  if (Array.isArray(rawBuckets)) {
+    return rawBuckets.map((bucket) => {
+      const item = bucket as Record<string, unknown>;
+      return {
+        severity: normalizeSeverity(item.key),
+        count: safeNumber(item.doc_count),
+      };
+    });
+  }
+
+  if (rawBuckets && typeof rawBuckets === 'object') {
+    return Object.entries(rawBuckets as Record<string, unknown>).map(([key, bucket]) => {
+      const item = bucket as Record<string, unknown>;
+      return {
+        severity: normalizeSeverity(key),
+        count: safeNumber(item.doc_count),
+      };
+    });
+  }
+
+  return [];
 };
 
 /**
@@ -146,6 +179,21 @@ export const parseTopUsers = (esResponse: estypes.SearchResponse<unknown>): Aler
 };
 
 /**
+ * Parse alerts by server aggregation result.
+ */
+export const parseAlertsByServer = (esResponse: estypes.SearchResponse<unknown>): AlertsByServer => {
+  const aggs = esResponse.aggregations as Record<string, unknown> | undefined;
+  const buckets = (((aggs?.by_server as Record<string, unknown> | undefined)?.buckets as unknown[]) ?? []) as unknown[];
+  return buckets.map((bucket) => {
+    const item = bucket as Record<string, unknown>;
+    return {
+      serverName: safeString(item.key),
+      count: safeNumber(item.doc_count),
+    };
+  });
+};
+
+/**
  * Parse MITRE tactics aggregation result.
  */
 export const parseMitreTactics = (esResponse: estypes.SearchResponse<unknown>): AlertsByMitre => {
@@ -173,33 +221,33 @@ export const parseRecentHighRisk = (esResponse: estypes.SearchResponse<unknown>)
         return null;
       }
 
-      const rawTactics = source['kibana.alert.rule.threat.tactic'];
+      const rawTactics = getField(source, 'kibana.alert.rule.threat.tactic');
       const trailTactics = Array.isArray(rawTactics)
         ? rawTactics.map((item) => parseMitreTacticItem(item)).filter((t): t is MitreTactic => t !== null)
         : [];
 
-      const rawTechniques = source['kibana.alert.rule.threat.technique'];
+      const rawTechniques = getField(source, 'kibana.alert.rule.threat.technique');
       const trailTechniques = Array.isArray(rawTechniques)
         ? rawTechniques.map((item) => parseMitreTechniqueItem(item)).filter((t): t is MitreTechnique => t !== null)
         : [];
 
       const alert: SecurityAlert = {
-        timestamp: safeString(source['@timestamp']),
-        severity: normalizeSeverity(source['kibana.alert.severity']),
-        riskScore: safeNumber(source.risk_score),
-        status: normalizeStatus(source['kibana.alert.status']),
-        workflowStatus: normalizeWorkflowStatus(source['kibana.alert.workflow_status']),
-        ruleName: safeString(source['kibana.alert.rule.name']),
-        ruleId: safeString(source['kibana.alert.rule.uuid'] ?? source['kibana.alert.rule.id']),
-        userName: safeString(source['user.name']),
-        targetUserName: safeString(source['user.target.name'] ?? source['user.target']),
-        observerServer: safeString(source['observer.server']),
-        observerDept: safeString(source['observer.department'] ?? source['observer.dept']),
-        serviceName: safeString(source['service.name']),
+        timestamp: safeString(getField(source, '@timestamp')),
+        severity: normalizeSeverity(getField(source, 'kibana.alert.severity')),
+        riskScore: safeNumber(getField(source, 'risk_score') ?? getField(source, 'kibana.alert.risk_score')),
+        status: normalizeStatus(getField(source, 'kibana.alert.status')),
+        workflowStatus: normalizeWorkflowStatus(getField(source, 'kibana.alert.workflow_status')),
+        ruleName: safeString(getField(source, 'kibana.alert.rule.name')),
+        ruleId: safeString(getField(source, 'kibana.alert.rule.uuid') ?? getField(source, 'kibana.alert.rule.id')),
+        userName: safeString(getField(source, 'user.name')),
+        targetUserName: safeString(getField(source, 'user.target.name') ?? getField(source, 'user.target')),
+        observerServer: safeString(getField(source, 'observer.server') ?? getField(source, 'host.name')),
+        observerDept: safeString(getField(source, 'observer.department') ?? getField(source, 'observer.dept')),
+        serviceName: safeString(getField(source, 'service.name')),
         mitreTactics: trailTactics,
         mitreTechniques: trailTechniques,
-        originalEventAction: safeString(source['event.action']),
-        alertUuid: safeString(source['kibana.alert.uuid'] ?? source['kibana.alert.id']),
+        originalEventAction: safeString(getField(source, 'event.action')),
+        alertUuid: safeString(getField(source, 'kibana.alert.uuid') ?? getField(source, 'kibana.alert.id')),
       };
 
       return alert;
@@ -214,11 +262,11 @@ export const parseSummaryCounts = (
   esResponse: estypes.SearchResponse<unknown>
 ): { total: number; openCount: number; highCriticalCount: number } => {
   const aggs = esResponse.aggregations as Record<string, unknown> | undefined;
-  const totalAlertsAgg = aggs?.total_alerts as Record<string, unknown> | undefined;
   const totalOpenAgg = aggs?.total_open as Record<string, unknown> | undefined;
   const highCriticalAgg = aggs?.high_critical as Record<string, unknown> | undefined;
 
-  const total = safeNumber(totalAlertsAgg?.value);
+  const totalHits = esResponse.hits?.total;
+  const total = typeof totalHits === 'number' ? totalHits : safeNumber(totalHits?.value);
   const openCount = safeNumber(totalOpenAgg?.doc_count);
   const highCriticalCount = safeNumber(highCriticalAgg?.doc_count);
 

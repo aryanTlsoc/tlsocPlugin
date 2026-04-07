@@ -9,18 +9,17 @@ import { PLUGIN_NAME } from '../common';
 
 export class TlsocPluginPlugin implements Plugin<TlsocPluginPluginSetup, TlsocPluginPluginStart> {
   public setup(core: CoreSetup): TlsocPluginPluginSetup {
+    const mountDashboardApp = async (params: AppMountParameters) => {
+      const { renderApp } = await import('./application');
+      const [coreStart, depsStart] = await core.getStartServices();
+      return renderApp(coreStart, depsStart as AppPluginStartDependencies, params);
+    };
+
     // Register an application into the side navigation menu
     core.application.register({
       id: 'tlsocPlugin',
       title: PLUGIN_NAME,
-      async mount(params: AppMountParameters) {
-        // Load application bundle
-        const { renderApp } = await import('./application');
-        // Get start services as specified in kibana.json
-        const [coreStart, depsStart] = await core.getStartServices();
-        // Render the application
-        return renderApp(coreStart, depsStart as AppPluginStartDependencies, params);
-      },
+      mount: mountDashboardApp,
     });
 
     // Return methods that should be available to other plugins
