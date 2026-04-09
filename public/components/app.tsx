@@ -91,7 +91,7 @@ const WINDOW_OPTIONS: Array<{ value: WindowValue; text: string }> = [
   { value: 'now-90d', text: '90 days' },
 ];
 
-const LIVE_REFRESH_MS = 5000;
+const LIVE_REFRESH_MS = 30000;
 
 const DASHBOARD_CSS = `
 .soc-root[data-theme="dark"] {
