@@ -464,7 +464,8 @@ export const buildRecentHighRiskQuery = (params: TimeRangeParams): estypes.Searc
     },
   },
   sort: [
-    { risk_score_normalized: { order: 'desc' } },
+    { 'kibana.alert.risk_score': { order: 'desc', unmapped_type: 'double' } },
+    { risk_score: { order: 'desc', unmapped_type: 'double' } },
     { '@timestamp': { order: 'desc' } },
   ],
 });
@@ -475,7 +476,6 @@ export const buildRecentHighRiskQuery = (params: TimeRangeParams): estypes.Searc
 export const buildSummaryCountsQuery = (params: TimeRangeParams): estypes.SearchRequest => ({
   index: params.index,
   size: 0,
-  track_total_hits: true,
   allow_no_indices: true,
   ignore_unavailable: true,
   expand_wildcards: ['open', 'hidden'],
