@@ -6,6 +6,7 @@ import {
   Logger,
 } from '../../../src/core/server';
 
+import type { TlsocPluginConfig } from './config';
 import { TlsocPluginPluginSetup, TlsocPluginPluginStart } from './types';
 import { defineRoutes } from './routes';
 import { AlertMailerService } from './lib/alert_mailer_service';

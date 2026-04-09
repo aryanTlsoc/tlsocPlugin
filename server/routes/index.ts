@@ -208,7 +208,7 @@ export function defineRoutes(router: IRouter, logger: Logger, alertMailerService
         }
 
         const esQuery = {
-          index: ALERTS_INDEX,
+          index: config.alertsIndex,
           body: {
             from,
             size,
@@ -252,7 +252,7 @@ export function defineRoutes(router: IRouter, logger: Logger, alertMailerService
         const { id } = request.params;
 
         const esQuery = {
-          index: ALERTS_INDEX,
+          index: config.alertsIndex,
           body: {
             query: {
               term: { 'kibana.alert.uuid': id },
@@ -316,7 +316,7 @@ export function defineRoutes(router: IRouter, logger: Logger, alertMailerService
         }
 
         const esQuery = {
-          index: ALERTS_INDEX,
+          index: config.alertsIndex,
           body: {
             size: 0,
             query,
@@ -382,13 +382,13 @@ export function defineRoutes(router: IRouter, logger: Logger, alertMailerService
           coreContext.elasticsearch.client,
           logger,
           {
-            alertsIndex: ALERTS_INDEX,
-            severityIndex: SEVERITY_INDEX,
+            alertsIndex: config.alertsIndex,
+            severityIndex: config.severityIndex,
           }
         );
 
         const dashboard = await client.getDashboardMetrics({
-          index: ALERTS_INDEX,
+          index: config.alertsIndex,
           from: from_date ?? 'now-90d',
           to: to_date ?? 'now',
         });
@@ -423,11 +423,11 @@ export function defineRoutes(router: IRouter, logger: Logger, alertMailerService
         const client = createDashboardEsClient(
           coreContext.elasticsearch.client,
           logger,
-          { alertsIndex: ALERTS_INDEX }
+          { alertsIndex: config.alertsIndex }
         );
 
         const result = await client.getAlertsByServer({
-          index: ALERTS_INDEX,
+          index: config.alertsIndex,
           from: from_date ?? 'now-90d',
           to: to_date ?? 'now',
         });
