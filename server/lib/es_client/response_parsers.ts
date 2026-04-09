@@ -20,6 +20,25 @@ import type {
 
 const safeString = (value: unknown): string => (typeof value === 'string' ? value : '');
 const safeNumber = (value: unknown): number => (typeof value === 'number' ? value : Number(value) || 0);
+const safePayloadString = (value: unknown): string => {
+  if (value == null) {
+    return '';
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return '';
+  }
+};
 
 const getField = (source: Record<string, unknown>, path: string): unknown => {
   if (Object.prototype.hasOwnProperty.call(source, path)) {
@@ -35,6 +54,23 @@ const getField = (source: Record<string, unknown>, path: string): unknown => {
     current = (current as Record<string, unknown>)[part];
   }
   return current;
+};
+
+const parseJsonRecord = (value: unknown): Record<string, unknown> | undefined => {
+  if (typeof value !== 'string' || !value.trim()) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
 };
 
 const normalizeSeverity = (value: unknown): AlertSeverity => {
@@ -110,9 +146,10 @@ export const parseAlertsOverTime = (esResponse: estypes.SearchResponse<unknown>)
   const buckets = (((aggs?.alerts_over_time as Record<string, unknown> | undefined)?.buckets as unknown[]) ?? []) as unknown[];
   return buckets.map((bucket) => {
     const item = bucket as Record<string, unknown>;
+    const uniqueAlerts = item.unique_alerts as Record<string, unknown> | undefined;
     return {
       timestamp: safeString(item.key_as_string),
-      count: safeNumber(item.doc_count),
+      count: safeNumber(uniqueAlerts?.value ?? item.doc_count),
     };
   });
 };
@@ -128,9 +165,10 @@ export const parseAlertsBySeverity = (esResponse: estypes.SearchResponse<unknown
   if (Array.isArray(rawBuckets)) {
     return rawBuckets.map((bucket) => {
       const item = bucket as Record<string, unknown>;
+      const uniqueAlerts = item.unique_alerts as Record<string, unknown> | undefined;
       return {
         severity: normalizeSeverity(item.key),
-        count: safeNumber(item.doc_count),
+        count: safeNumber(uniqueAlerts?.value ?? item.doc_count),
       };
     });
   }
@@ -138,9 +176,10 @@ export const parseAlertsBySeverity = (esResponse: estypes.SearchResponse<unknown
   if (rawBuckets && typeof rawBuckets === 'object') {
     return Object.entries(rawBuckets as Record<string, unknown>).map(([key, bucket]) => {
       const item = bucket as Record<string, unknown>;
+      const uniqueAlerts = item.unique_alerts as Record<string, unknown> | undefined;
       return {
         severity: normalizeSeverity(key),
-        count: safeNumber(item.doc_count),
+        count: safeNumber(uniqueAlerts?.value ?? item.doc_count),
       };
     });
   }
@@ -221,6 +260,19 @@ export const parseRecentHighRisk = (esResponse: estypes.SearchResponse<unknown>)
         return null;
       }
 
+      const rawEventOriginal = safePayloadString(
+        getField(source, 'event.original') ?? getField(source, 'event.payload') ?? getField(source, 'message')
+      );
+      const parsedEventOriginal = parseJsonRecord(rawEventOriginal) ?? {};
+      const destinationIpFromEvent =
+        getField(parsedEventOriginal, 'transaction.host_ip') ??
+        getField(parsedEventOriginal, 'destination.ip') ??
+        getField(parsedEventOriginal, 'destination.address');
+      const observerServerFromEvent =
+        getField(parsedEventOriginal, 'transaction.server_id') ??
+        getField(parsedEventOriginal, 'observer.server') ??
+        getField(parsedEventOriginal, 'host.name');
+
       const rawTactics = getField(source, 'kibana.alert.rule.threat.tactic');
       const trailTactics = Array.isArray(rawTactics)
         ? rawTactics.map((item) => parseMitreTacticItem(item)).filter((t): t is MitreTactic => t !== null)
@@ -231,23 +283,46 @@ export const parseRecentHighRisk = (esResponse: estypes.SearchResponse<unknown>)
         ? rawTechniques.map((item) => parseMitreTechniqueItem(item)).filter((t): t is MitreTechnique => t !== null)
         : [];
 
+      const tacticNameFromField = safeString(getField(source, 'kibana.alert.rule.threat.tactic.name'));
+      const tacticNameFromLegacySignal = safeString(getField(source, 'signal.rule.threat.tactic.name'));
+      const tacticNameFromArray = trailTactics[0]?.name ?? '';
+      const mitreTacticName = tacticNameFromField || tacticNameFromLegacySignal || tacticNameFromArray;
+
+      const eventId = safeString(
+        getField(source, 'event.id') ??
+          getField(source, 'kibana.alert.original_event.id') ??
+          getField(source, 'kibana.alert.id') ??
+          getField(source, 'kibana.alert.uuid') ??
+          getField(source, 'tlsoc.alert.id') ??
+          hit._id
+      );
+
       const alert: SecurityAlert = {
         timestamp: safeString(getField(source, '@timestamp')),
-        severity: normalizeSeverity(getField(source, 'kibana.alert.severity')),
-        riskScore: safeNumber(getField(source, 'risk_score') ?? getField(source, 'kibana.alert.risk_score')),
-        status: normalizeStatus(getField(source, 'kibana.alert.status')),
+        severity: normalizeSeverity(getField(source, 'tlsoc.alert.severity') ?? getField(source, 'kibana.alert.severity') ?? getField(source, 'event.severity')),
+        riskScore: safeNumber(getField(source, 'tlsoc.alert.risk_score') ?? getField(source, 'kibana.alert.risk_score') ?? getField(source, 'risk_score')),
+        status: normalizeStatus(getField(source, 'tlsoc.alert.status') ?? getField(source, 'kibana.alert.status')),
         workflowStatus: normalizeWorkflowStatus(getField(source, 'kibana.alert.workflow_status')),
-        ruleName: safeString(getField(source, 'kibana.alert.rule.name')),
-        ruleId: safeString(getField(source, 'kibana.alert.rule.uuid') ?? getField(source, 'kibana.alert.rule.id')),
+        ruleName: safeString(getField(source, 'tlsoc.alert.name') ?? getField(source, 'kibana.alert.rule.name')),
+        ruleId: safeString(getField(source, 'kibana.alert.rule.uuid') ?? getField(source, 'kibana.alert.rule.id') ?? getField(source, 'tlsoc.alert.id')),
         userName: safeString(getField(source, 'user.name')),
         targetUserName: safeString(getField(source, 'user.target.name') ?? getField(source, 'user.target')),
-        observerServer: safeString(getField(source, 'observer.server') ?? getField(source, 'host.name')),
+        sourceIp: safeString(getField(source, 'source.ip') ?? getField(source, 'source.address')),
+        destinationIp: safeString(
+          getField(source, 'destination.ip') ?? getField(source, 'destination.address') ?? destinationIpFromEvent
+        ),
+        eventPayload: rawEventOriginal,
+        observerServer: safeString(getField(source, 'observer.server') ?? getField(source, 'host.name') ?? observerServerFromEvent),
         observerDept: safeString(getField(source, 'observer.department') ?? getField(source, 'observer.dept')),
         serviceName: safeString(getField(source, 'service.name')),
         mitreTactics: trailTactics,
         mitreTechniques: trailTechniques,
+        mitreTacticName,
         originalEventAction: safeString(getField(source, 'event.action')),
-        alertUuid: safeString(getField(source, 'kibana.alert.uuid') ?? getField(source, 'kibana.alert.id')),
+        alertUuid: safeString(getField(source, 'kibana.alert.uuid') ?? getField(source, 'kibana.alert.id') ?? getField(source, 'tlsoc.alert.id')),
+        eventId,
+        eventOriginal: rawEventOriginal,
+        signalStatus: safeString(getField(source, 'signal.status')),
       };
 
       return alert;
@@ -264,11 +339,14 @@ export const parseSummaryCounts = (
   const aggs = esResponse.aggregations as Record<string, unknown> | undefined;
   const totalOpenAgg = aggs?.total_open as Record<string, unknown> | undefined;
   const highCriticalAgg = aggs?.high_critical as Record<string, unknown> | undefined;
+  const totalUniqueAgg = aggs?.total_unique_alerts as Record<string, unknown> | undefined;
+  const totalOpenUnique = totalOpenAgg?.unique_alerts as Record<string, unknown> | undefined;
+  const highCriticalUnique = highCriticalAgg?.unique_alerts as Record<string, unknown> | undefined;
 
   const totalHits = esResponse.hits?.total;
-  const total = typeof totalHits === 'number' ? totalHits : safeNumber(totalHits?.value);
-  const openCount = safeNumber(totalOpenAgg?.doc_count);
-  const highCriticalCount = safeNumber(highCriticalAgg?.doc_count);
+  const total = safeNumber(totalUniqueAgg?.value ?? (typeof totalHits === 'number' ? totalHits : totalHits?.value));
+  const openCount = safeNumber(totalOpenUnique?.value ?? totalOpenAgg?.doc_count);
+  const highCriticalCount = safeNumber(highCriticalUnique?.value ?? highCriticalAgg?.doc_count);
 
   return { total, openCount, highCriticalCount };
 };

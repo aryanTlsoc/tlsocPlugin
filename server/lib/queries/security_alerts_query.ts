@@ -146,6 +146,13 @@ export const buildAlertsOverTimeQuery = (params: TimeRangeParams): estypes.Searc
           max: params.to,
         },
       },
+      aggs: {
+        unique_alerts: {
+          cardinality: {
+            field: 'tlsoc.alert.id.keyword',
+          },
+        },
+      },
     },
   },
 });
@@ -187,6 +194,13 @@ export const buildAlertsBySeverityQuery = (params: TimeRangeParams): estypes.Sea
             query_string: {
               query: 'tlsoc.alert.severity : "low"',
             },
+          },
+        },
+      },
+      aggs: {
+        unique_alerts: {
+          cardinality: {
+            field: 'tlsoc.alert.id.keyword',
           },
         },
       },
@@ -377,11 +391,19 @@ export const buildRecentHighRiskQuery = (params: TimeRangeParams): estypes.Searc
   ignore_unavailable: true,
   expand_wildcards: ['open', 'hidden'],
   size: 20,
+  collapse: {
+    field: 'tlsoc.alert.id.keyword',
+  },
   runtime_mappings: {
     risk_score_normalized: {
       type: 'double',
       script: {
         source: `
+          if (doc.containsKey('tlsoc.alert.risk_score') && !doc['tlsoc.alert.risk_score'].empty) {
+            emit((double) doc['tlsoc.alert.risk_score'].value);
+            return;
+          }
+
           if (doc.containsKey('kibana.alert.risk_score') && !doc['kibana.alert.risk_score'].empty) {
             emit((double) doc['kibana.alert.risk_score'].value);
             return;
@@ -399,22 +421,31 @@ export const buildRecentHighRiskQuery = (params: TimeRangeParams): estypes.Searc
   },
   _source: [
     '@timestamp',
+    'tlsoc.alert.severity',
+    'tlsoc.alert.status',
+    'tlsoc.alert.name',
+    'tlsoc.alert.id',
+    'tlsoc.alert.risk_score',
+    'tlsoc.alert.type',
+    'event.severity',
+    'event.action',
+    'event.payload',
+    'event.original',
+    'event.id',
     'kibana.alert.severity',
-    'risk_score',
     'kibana.alert.risk_score',
     'kibana.alert.status',
     'kibana.alert.workflow_status',
     'kibana.alert.rule.name',
     'kibana.alert.rule.uuid',
-    'user.name',
-    'user.target.name',
-    'observer.server',
-    'observer.department',
-    'service.name',
     'kibana.alert.rule.threat.tactic',
-    'kibana.alert.rule.threat.technique',
-    'event.action',
+    'kibana.alert.rule.threat.tactic.name',
     'kibana.alert.uuid',
+    'kibana.alert.id',
+    'user.name',
+    'source.ip',
+    'destination.ip',
+    'message',
   ],
   query: {
     bool: {
@@ -422,12 +453,14 @@ export const buildRecentHighRiskQuery = (params: TimeRangeParams): estypes.Searc
         buildBaseTimeFilter(params),
       ],
       should: [
-        { range: { risk_score: { gte: 70 } } },
+        { range: { 'tlsoc.alert.risk_score': { gte: 70 } } },
         { range: { 'kibana.alert.risk_score': { gte: 70 } } },
-        { term: { 'kibana.alert.status': 'active' } },
-        { term: { 'event.outcome': 'failure' } },
+        { term: { 'tlsoc.alert.status': 'active' } },
+        { range: { 'event.severity': { gte: 7 } } },
       ],
-      minimum_should_match: 1,
+      // Keep high-risk clauses as preference signals, but do not exclude alerts
+      // that do not carry these fields in custom TLSOC pipelines.
+      minimum_should_match: 0,
     },
   },
   sort: [
@@ -460,10 +493,29 @@ export const buildSummaryCountsQuery = (params: TimeRangeParams): estypes.Search
       filter: {
         term: { workflow_normalized: 'open' },
       },
+      aggs: {
+        unique_alerts: {
+          cardinality: {
+            field: 'tlsoc.alert.id.keyword',
+          },
+        },
+      },
     },
     high_critical: {
       filter: {
         terms: { severity_normalized: ['high', 'critical'] },
+      },
+      aggs: {
+        unique_alerts: {
+          cardinality: {
+            field: 'tlsoc.alert.id.keyword',
+          },
+        },
+      },
+    },
+    total_unique_alerts: {
+      cardinality: {
+        field: 'tlsoc.alert.id.keyword',
       },
     },
   },

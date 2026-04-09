@@ -31,6 +31,9 @@ export interface SecurityAlert {
   ruleId: string;
   userName: string;
   targetUserName?: string;
+  sourceIp?: string;
+  destinationIp?: string;
+  eventPayload?: string;
   observerServer?: string;
   observerDept?: string;
   serviceName?: string;
@@ -38,6 +41,10 @@ export interface SecurityAlert {
   mitreTechniques: MitreTechnique[];
   originalEventAction?: string;
   alertUuid: string;
+  eventId?: string;
+  eventOriginal?: string;
+  signalStatus?: string;
+  mitreTacticName?: string;
 }
 
 export type AlertsOverTime = Array<{ timestamp: string; count: number }>;

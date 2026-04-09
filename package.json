@@ -9,5 +9,9 @@
     "plugin-helpers": "node ../../scripts/plugin_helpers",
     "kbn": "node ../../scripts/kbn"
   },
-  "dependencies": {}
+  "dependencies": {
+    "chart.js": "3.9.1",
+    "nodemailer": "^6.9.15",
+    "react-chartjs-2": "4.3.1"
+  }
 }
