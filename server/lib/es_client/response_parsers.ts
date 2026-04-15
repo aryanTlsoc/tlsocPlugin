@@ -146,10 +146,9 @@ export const parseAlertsOverTime = (esResponse: estypes.SearchResponse<unknown>)
   const buckets = (((aggs?.alerts_over_time as Record<string, unknown> | undefined)?.buckets as unknown[]) ?? []) as unknown[];
   return buckets.map((bucket) => {
     const item = bucket as Record<string, unknown>;
-    const uniqueAlerts = item.unique_alerts as Record<string, unknown> | undefined;
     return {
       timestamp: safeString(item.key_as_string),
-      count: safeNumber(uniqueAlerts?.value ?? item.doc_count),
+      count: safeNumber(item.doc_count),
     };
   });
 };
@@ -165,10 +164,9 @@ export const parseAlertsBySeverity = (esResponse: estypes.SearchResponse<unknown
   if (Array.isArray(rawBuckets)) {
     return rawBuckets.map((bucket) => {
       const item = bucket as Record<string, unknown>;
-      const uniqueAlerts = item.unique_alerts as Record<string, unknown> | undefined;
       return {
         severity: normalizeSeverity(item.key),
-        count: safeNumber(uniqueAlerts?.value ?? item.doc_count),
+        count: safeNumber(item.doc_count),
       };
     });
   }
@@ -176,10 +174,9 @@ export const parseAlertsBySeverity = (esResponse: estypes.SearchResponse<unknown
   if (rawBuckets && typeof rawBuckets === 'object') {
     return Object.entries(rawBuckets as Record<string, unknown>).map(([key, bucket]) => {
       const item = bucket as Record<string, unknown>;
-      const uniqueAlerts = item.unique_alerts as Record<string, unknown> | undefined;
       return {
         severity: normalizeSeverity(key),
-        count: safeNumber(uniqueAlerts?.value ?? item.doc_count),
+        count: safeNumber(item.doc_count),
       };
     });
   }
@@ -339,14 +336,11 @@ export const parseSummaryCounts = (
   const aggs = esResponse.aggregations as Record<string, unknown> | undefined;
   const totalOpenAgg = aggs?.total_open as Record<string, unknown> | undefined;
   const highCriticalAgg = aggs?.high_critical as Record<string, unknown> | undefined;
-  const totalUniqueAgg = aggs?.total_unique_alerts as Record<string, unknown> | undefined;
-  const totalOpenUnique = totalOpenAgg?.unique_alerts as Record<string, unknown> | undefined;
-  const highCriticalUnique = highCriticalAgg?.unique_alerts as Record<string, unknown> | undefined;
 
   const totalHits = esResponse.hits?.total;
-  const total = safeNumber(totalUniqueAgg?.value ?? (typeof totalHits === 'number' ? totalHits : totalHits?.value));
-  const openCount = safeNumber(totalOpenUnique?.value ?? totalOpenAgg?.doc_count);
-  const highCriticalCount = safeNumber(highCriticalUnique?.value ?? highCriticalAgg?.doc_count);
+  const total = safeNumber(typeof totalHits === 'number' ? totalHits : totalHits?.value);
+  const openCount = safeNumber(totalOpenAgg?.doc_count);
+  const highCriticalCount = safeNumber(highCriticalAgg?.doc_count);
 
   return { total, openCount, highCriticalCount };
 };

@@ -48,78 +48,6 @@ const getAlertsHistogramInterval = (from: string): string => {
   }
 };
 
-const buildSeverityRuntimeMappings = (): Record<string, estypes.MappingRuntimeField> => ({
-  severity_normalized: {
-    type: 'keyword',
-    script: {
-      source: `
-        if (doc.containsKey('kibana.alert.severity') && !doc['kibana.alert.severity'].empty) {
-          emit(doc['kibana.alert.severity'].value.toString().toLowerCase());
-          return;
-        }
-
-        if (doc.containsKey('tlsoc.alert.severity') && !doc['tlsoc.alert.severity'].empty) {
-          emit(doc['tlsoc.alert.severity'].value.toString().toLowerCase());
-          return;
-        }
-
-        if (doc.containsKey('log.level') && !doc['log.level'].empty) {
-          def level = doc['log.level'].value.toString().toLowerCase();
-          if (level == 'critical' || level == 'fatal' || level == 'error') {
-            emit('high');
-          } else if (level == 'warn' || level == 'warning') {
-            emit('medium');
-          } else {
-            emit('low');
-          }
-          return;
-        }
-
-        if (doc.containsKey('event.severity') && !doc['event.severity'].empty) {
-          def sev = doc['event.severity'].value;
-          if (sev >= 8) {
-            emit('critical');
-          } else if (sev >= 6) {
-            emit('high');
-          } else if (sev >= 4) {
-            emit('medium');
-          } else {
-            emit('low');
-          }
-          return;
-        }
-
-        emit('low');
-      `,
-    },
-  },
-});
-
-const buildWorkflowRuntimeMappings = (): Record<string, estypes.MappingRuntimeField> => ({
-  workflow_normalized: {
-    type: 'keyword',
-    script: {
-      source: `
-        if (doc.containsKey('kibana.alert.workflow_status') && !doc['kibana.alert.workflow_status'].empty) {
-          emit(doc['kibana.alert.workflow_status'].value.toString().toLowerCase());
-          return;
-        }
-
-        if (doc.containsKey('kibana.alert.status') && !doc['kibana.alert.status'].empty) {
-          def status = doc['kibana.alert.status'].value.toString().toLowerCase();
-          if (status == 'active') {
-            emit('open');
-          } else {
-            emit('closed');
-          }
-          return;
-        }
-
-        emit('open');
-      `,
-    },
-  },
-});
 
 /**
  * Builds query for aggregating alerts over time.
@@ -144,13 +72,6 @@ export const buildAlertsOverTimeQuery = (params: TimeRangeParams): estypes.Searc
         extended_bounds: {
           min: params.from,
           max: params.to,
-        },
-      },
-      aggs: {
-        unique_alerts: {
-          cardinality: {
-            field: 'tlsoc.alert.id.keyword',
-          },
         },
       },
     },
@@ -194,13 +115,6 @@ export const buildAlertsBySeverityQuery = (params: TimeRangeParams): estypes.Sea
             query_string: {
               query: 'tlsoc.alert.severity : "low"',
             },
-          },
-        },
-      },
-      aggs: {
-        unique_alerts: {
-          cardinality: {
-            field: 'tlsoc.alert.id.keyword',
           },
         },
       },
@@ -479,10 +393,6 @@ export const buildSummaryCountsQuery = (params: TimeRangeParams): estypes.Search
   allow_no_indices: true,
   ignore_unavailable: true,
   expand_wildcards: ['open', 'hidden'],
-  runtime_mappings: {
-    ...buildSeverityRuntimeMappings(),
-    ...buildWorkflowRuntimeMappings(),
-  },
   query: {
     bool: {
       filter: [buildBaseTimeFilter(params)],
@@ -491,31 +401,16 @@ export const buildSummaryCountsQuery = (params: TimeRangeParams): estypes.Search
   aggs: {
     total_open: {
       filter: {
-        term: { workflow_normalized: 'open' },
-      },
-      aggs: {
-        unique_alerts: {
-          cardinality: {
-            field: 'tlsoc.alert.id.keyword',
-          },
+        query_string: {
+          query: 'tlsoc.alert.status : "active" OR kibana.alert.status : "active" OR kibana.alert.workflow_status : "open"',
         },
       },
     },
     high_critical: {
       filter: {
-        terms: { severity_normalized: ['high', 'critical'] },
-      },
-      aggs: {
-        unique_alerts: {
-          cardinality: {
-            field: 'tlsoc.alert.id.keyword',
-          },
+        query_string: {
+          query: 'tlsoc.alert.severity : "high" OR tlsoc.alert.severity : "critical"',
         },
-      },
-    },
-    total_unique_alerts: {
-      cardinality: {
-        field: 'tlsoc.alert.id.keyword',
       },
     },
   },

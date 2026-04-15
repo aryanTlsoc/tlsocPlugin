@@ -82,7 +82,12 @@ export class DashboardEsClient {
   ): Promise<T> {
     this.logger.debug(`DashboardEsClient.${operationName} query: ${JSON.stringify(query)}`);
     try {
-      const response = await this.esClient.asCurrentUser.search(query);
+       const response = await this.esClient.asCurrentUser.search(
+         {
+           ...query,
+           timeout: '45s',  // Add 45 second timeout to prevent hanging
+         } as estypes.SearchRequest
+       );
       const parsedResponse = ((response as { body?: unknown }).body ?? response) as estypes.SearchResponse<unknown>;
       return parser(parsedResponse);
     } catch (error) {
@@ -143,7 +148,7 @@ export class DashboardEsClient {
    * Returns most recent high-risk active alerts.
    */
   public async getRecentHighRisk(params: TimeRangeParams): Promise<SecurityAlert[]> {
-    const query = buildRecentHighRiskQuery({ ...params, index: this.indices.alertsIndex });
+    const query = buildRecentHighRiskQuery({ ...params, index: this.indices.severityIndex ?? this.indices.alertsIndex });
     return this.runQuery('getRecentHighRisk', query, parseRecentHighRisk);
   }
 
