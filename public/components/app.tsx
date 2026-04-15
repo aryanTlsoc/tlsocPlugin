@@ -91,7 +91,8 @@ const WINDOW_OPTIONS: Array<{ value: WindowValue; text: string }> = [
   { value: 'now-90d', text: '90 days' },
 ];
 
-const LIVE_REFRESH_MS = 30000;
+const LIVE_REFRESH_MS = 60000;
+const DEFAULT_WINDOW_FROM: WindowValue = 'now-90d';
 
 const DASHBOARD_CSS = `
 .soc-root[data-theme="dark"] {
@@ -925,7 +926,7 @@ const BarChart: React.FC<{ data: Array<{ label: string; count: number }>; dark: 
 export const TlsocPluginApp = ({ basename, notifications, http, navigation }: TlsocPluginAppDeps) => {
   const [dark,             setDark]             = useState<boolean>(false);
   const [dashboard,        setDashboard]        = useState<DashboardMetrics | null>(null);
-  const [windowFrom,       setWindowFrom]       = useState<WindowValue>('now-1w');
+  const [windowFrom,       setWindowFrom]       = useState<WindowValue>(DEFAULT_WINDOW_FROM);
   const [isLoading,        setIsLoading]        = useState<boolean>(true);
   const [isRefreshing,     setIsRefreshing]     = useState<boolean>(false);
   const [error,            setError]            = useState<string>('');
@@ -1065,6 +1066,7 @@ export const TlsocPluginApp = ({ basename, notifications, http, navigation }: Tl
   }, [dashboard, resolveMitreName]);
 
   const totalAlerts = severityCounts.critical + severityCounts.high + severityCounts.medium + severityCounts.low;
+  const totalCount = dashboard?.total ?? 0;
 
   const fmtTime = (v: string) => {
     const d = new Date(v);
@@ -1146,7 +1148,7 @@ export const TlsocPluginApp = ({ basename, notifications, http, navigation }: Tl
     const rows: Array<Array<unknown>> = [];
 
     rows.push(['SUMMARY', 'Generated At', nowIso]);
-    rows.push(['SUMMARY', 'Total Alerts', totalAlerts]);
+    rows.push(['SUMMARY', 'Total Alerts', totalCount]);
     rows.push(['SUMMARY', 'Critical', severityCounts.critical]);
     rows.push(['SUMMARY', 'High', severityCounts.high]);
     rows.push(['SUMMARY', 'Medium', severityCounts.medium]);
@@ -1172,7 +1174,7 @@ export const TlsocPluginApp = ({ basename, notifications, http, navigation }: Tl
       ['section', 'col1', 'col2', 'col3', 'col4', 'col5', 'col6', 'col7', 'col8', 'col9'],
       rows
     );
-  }, [mitreTactics, recentAlertRows, severityCounts.critical, severityCounts.high, severityCounts.low, severityCounts.medium, totalAlerts, trendBase, triggerCsvDownload]);
+  }, [mitreTactics, recentAlertRows, severityCounts.critical, severityCounts.high, severityCounts.low, severityCounts.medium, totalCount, trendBase, triggerCsvDownload]);
 
   const buildDiscoverLogsUrl = useCallback((eventId: string) => {
     const discoverBase = 'https://10.130.171.246:5601/s/tlsoc/app/discover';
@@ -1257,7 +1259,7 @@ export const TlsocPluginApp = ({ basename, notifications, http, navigation }: Tl
                         </div>
                       </div>
                       <div className="soc-sev-grid-lite">
-                        <div className="soc-sev-cell soc-sev-critical"><p>Critical severity</p><h4>{severityCounts.critical}</h4></div>
+                        <div className="soc-sev-cell soc-sev-critical"><p>Count</p><h4>{totalCount}</h4></div>
                         <div className="soc-sev-cell soc-sev-high"><p>High Severity</p><h4>{severityCounts.high}</h4></div>
                         <div className="soc-sev-cell soc-sev-medium"><p>Medium severity</p><h4>{severityCounts.medium}</h4></div>
                         <div className="soc-sev-cell soc-sev-low"><p>Low Severity</p><h4>{severityCounts.low}</h4></div>
