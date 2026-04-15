@@ -14,10 +14,12 @@ import { AlertMailerService } from './lib/alert_mailer_service';
 export class TlsocPluginPlugin implements Plugin<TlsocPluginPluginSetup, TlsocPluginPluginStart> {
   private readonly logger: Logger;
   private readonly alertMailerService: AlertMailerService;
+  private readonly config: TlsocPluginConfig;
 
-  constructor(initializerContext: PluginInitializerContext) {
+  constructor(initializerContext: PluginInitializerContext<TlsocPluginConfig>) {
     this.logger = initializerContext.logger.get();
     this.alertMailerService = new AlertMailerService(this.logger.get('mailer'));
+    this.config = initializerContext.config.get();
   }
 
   public setup(core: CoreSetup) {
@@ -46,7 +48,7 @@ export class TlsocPluginPlugin implements Plugin<TlsocPluginPluginSetup, TlsocPl
     console.log('[tlsocPlugin] Router created - defining routes');
 
     // Register server side APIs
-    defineRoutes(router, this.logger, this.alertMailerService);
+    defineRoutes(router, this.logger, this.alertMailerService, this.config);
     console.log('[tlsocPlugin] Routes defined');
 
     return {};

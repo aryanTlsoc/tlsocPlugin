@@ -3,15 +3,15 @@ import { schema } from '@kbn/config-schema';
 import { AlertsResponse } from '../types';
 import { createDashboardEsClient } from '../lib/es_client/dashboard_es_client';
 import { AlertMailerService } from '../lib/alert_mailer_service';
+import type { TlsocPluginConfig } from '../config';
 
 const ALERTS_INDEX = 'tlsoc-alerts-*,.alerts-security*';
-const SEVERITY_INDEX = 'tlsoc-alerts-*,.alerts-security*';
 
 const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error);
 };
 
-export function defineRoutes(router: IRouter, logger: Logger, alertMailerService: AlertMailerService) {
+export function defineRoutes(router: IRouter, logger: Logger, alertMailerService: AlertMailerService, config: TlsocPluginConfig) {
   logger.info('[tlsocPlugin] Registering routes');
 
   router.post(
