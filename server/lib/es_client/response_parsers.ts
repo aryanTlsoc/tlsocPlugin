@@ -20,6 +20,22 @@ import type {
 
 const safeString = (value: unknown): string => (typeof value === 'string' ? value : '');
 const safeNumber = (value: unknown): number => (typeof value === 'number' ? value : Number(value) || 0);
+const firstNonEmptyString = (...values: unknown[]): string => {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) {
+      return value;
+    }
+
+    if (Array.isArray(value)) {
+      const found = value.find((item) => typeof item === 'string' && item.trim());
+      if (typeof found === 'string') {
+        return found;
+      }
+    }
+  }
+
+  return '';
+};
 const safePayloadString = (value: unknown): string => {
   if (value == null) {
     return '';
@@ -265,6 +281,10 @@ export const parseRecentHighRisk = (esResponse: estypes.SearchResponse<unknown>)
         getField(parsedEventOriginal, 'transaction.host_ip') ??
         getField(parsedEventOriginal, 'destination.ip') ??
         getField(parsedEventOriginal, 'destination.address');
+      const sourceIpFromEvent =
+        getField(parsedEventOriginal, 'source.ip') ??
+        getField(parsedEventOriginal, 'source.address') ??
+        getField(parsedEventOriginal, 'transaction.source_ip');
       const observerServerFromEvent =
         getField(parsedEventOriginal, 'transaction.server_id') ??
         getField(parsedEventOriginal, 'observer.server') ??
@@ -285,7 +305,7 @@ export const parseRecentHighRisk = (esResponse: estypes.SearchResponse<unknown>)
       const tacticNameFromArray = trailTactics[0]?.name ?? '';
       const mitreTacticName = tacticNameFromField || tacticNameFromLegacySignal || tacticNameFromArray;
 
-      const eventId = safeString(
+      const eventId = firstNonEmptyString(
         getField(source, 'event.id') ??
           getField(source, 'kibana.alert.original_event.id') ??
           getField(source, 'kibana.alert.id') ??
@@ -300,26 +320,30 @@ export const parseRecentHighRisk = (esResponse: estypes.SearchResponse<unknown>)
         riskScore: safeNumber(getField(source, 'tlsoc.alert.risk_score') ?? getField(source, 'kibana.alert.risk_score') ?? getField(source, 'risk_score')),
         status: normalizeStatus(getField(source, 'tlsoc.alert.status') ?? getField(source, 'kibana.alert.status')),
         workflowStatus: normalizeWorkflowStatus(getField(source, 'kibana.alert.workflow_status')),
-        ruleName: safeString(getField(source, 'tlsoc.alert.name') ?? getField(source, 'kibana.alert.rule.name')),
-        ruleId: safeString(getField(source, 'kibana.alert.rule.uuid') ?? getField(source, 'kibana.alert.rule.id') ?? getField(source, 'tlsoc.alert.id')),
-        userName: safeString(getField(source, 'user.name')),
-        targetUserName: safeString(getField(source, 'user.target.name') ?? getField(source, 'user.target')),
-        sourceIp: safeString(getField(source, 'source.ip') ?? getField(source, 'source.address')),
-        destinationIp: safeString(
+        ruleName: firstNonEmptyString(getField(source, 'tlsoc.alert.name'), getField(source, 'kibana.alert.rule.name')),
+        ruleId: firstNonEmptyString(getField(source, 'kibana.alert.rule.uuid'), getField(source, 'kibana.alert.rule.id'), getField(source, 'tlsoc.alert.id')),
+        userName: firstNonEmptyString(getField(source, 'user.name')),
+        targetUserName: firstNonEmptyString(getField(source, 'user.target.name'), getField(source, 'user.target')),
+        sourceIp: firstNonEmptyString(
+          getField(source, 'source.ip'),
+          getField(source, 'source.address'),
+          sourceIpFromEvent
+        ),
+        destinationIp: firstNonEmptyString(
           getField(source, 'destination.ip') ?? getField(source, 'destination.address') ?? destinationIpFromEvent
         ),
         eventPayload: rawEventOriginal,
-        observerServer: safeString(getField(source, 'observer.server') ?? getField(source, 'host.name') ?? observerServerFromEvent),
-        observerDept: safeString(getField(source, 'observer.department') ?? getField(source, 'observer.dept')),
-        serviceName: safeString(getField(source, 'service.name')),
+        observerServer: firstNonEmptyString(getField(source, 'observer.server'), getField(source, 'host.name'), observerServerFromEvent),
+        observerDept: firstNonEmptyString(getField(source, 'observer.department'), getField(source, 'observer.dept')),
+        serviceName: firstNonEmptyString(getField(source, 'service.name')),
         mitreTactics: trailTactics,
         mitreTechniques: trailTechniques,
         mitreTacticName,
-        originalEventAction: safeString(getField(source, 'event.action')),
-        alertUuid: safeString(getField(source, 'kibana.alert.uuid') ?? getField(source, 'kibana.alert.id') ?? getField(source, 'tlsoc.alert.id')),
+        originalEventAction: firstNonEmptyString(getField(source, 'event.action')),
+        alertUuid: firstNonEmptyString(getField(source, 'kibana.alert.uuid'), getField(source, 'kibana.alert.id'), getField(source, 'tlsoc.alert.id')),
         eventId,
         eventOriginal: rawEventOriginal,
-        signalStatus: safeString(getField(source, 'signal.status')),
+        signalStatus: firstNonEmptyString(getField(source, 'signal.status')),
       };
 
       return alert;
@@ -334,11 +358,11 @@ export const parseSummaryCounts = (
   esResponse: estypes.SearchResponse<unknown>
 ): { total: number; openCount: number; highCriticalCount: number } => {
   const aggs = esResponse.aggregations as Record<string, unknown> | undefined;
+  const totalMatchingSeverityAgg = aggs?.total_matching_severity as Record<string, unknown> | undefined;
   const totalOpenAgg = aggs?.total_open as Record<string, unknown> | undefined;
   const highCriticalAgg = aggs?.high_critical as Record<string, unknown> | undefined;
 
-  const totalHits = esResponse.hits?.total;
-  const total = safeNumber(typeof totalHits === 'number' ? totalHits : totalHits?.value);
+  const total = safeNumber(totalMatchingSeverityAgg?.doc_count);
   const openCount = safeNumber(totalOpenAgg?.doc_count);
   const highCriticalCount = safeNumber(highCriticalAgg?.doc_count);
 

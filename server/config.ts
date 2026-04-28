@@ -2,8 +2,8 @@ import { schema, TypeOf } from '@kbn/config-schema';
 import type { PluginConfigDescriptor } from '../../../src/core/server';
 
 const configSchema = schema.object({
-  alertsIndex: schema.string({ defaultValue: '.alerts-security*' }),
-  severityIndex: schema.string({ defaultValue: 'tlsoc-alerts-*' }),
+  alertsIndex: schema.string({ defaultValue: '.alerts-security.alerts-tlsoc*' }),
+  severityIndex: schema.string({ defaultValue: '.alerts-security.alerts-tlsoc*' }),
 });
 
 export type TlsocPluginConfig = TypeOf<typeof configSchema>;

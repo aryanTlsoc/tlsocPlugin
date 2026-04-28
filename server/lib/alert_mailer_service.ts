@@ -3,7 +3,7 @@ import path from 'path';
 import nodemailer, { type Transporter } from 'nodemailer';
 import type { ElasticsearchClient, Logger } from '../../../../src/core/server';
 
-const ALERT_INDICES = ['tlsoc-alerts-*', '.alerts-security*'];
+const ALERT_INDICES = ['.alerts-security.alerts-tlsoc*'];
 const DEFAULT_ADMIN_EMAIL = 'darshanmutalikdesai46@gmail.com';
 const DUPLICATE_WINDOW_MS = 60 * 1000;
 

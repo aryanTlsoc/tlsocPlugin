@@ -5,7 +5,7 @@ import { createDashboardEsClient } from '../lib/es_client/dashboard_es_client';
 import { AlertMailerService } from '../lib/alert_mailer_service';
 import type { TlsocPluginConfig } from '../config';
 
-const ALERTS_INDEX = 'tlsoc-alerts-*,.alerts-security*';
+const ALERTS_INDEX = '.alerts-security.alerts-tlsoc*';
 
 const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error);

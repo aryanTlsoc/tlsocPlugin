@@ -20,6 +20,12 @@ const buildBaseTimeFilter = (params: TimeRangeParams): estypes.QueryDslQueryCont
   },
 });
 
+const buildOpenAlertsFilter = (): estypes.QueryDslQueryContainer => ({
+  term: {
+    'kibana.alert.workflow_status': 'open',
+  },
+});
+
 const getAlertsHistogramInterval = (from: string): string => {
   switch (from) {
     case 'now-15m':
@@ -89,7 +95,7 @@ export const buildAlertsBySeverityQuery = (params: TimeRangeParams): estypes.Sea
   size: 0,
   query: {
     bool: {
-      filter: [buildBaseTimeFilter(params)],
+      filter: [buildBaseTimeFilter(params), buildOpenAlertsFilter()],
     },
   },
   aggs: {
@@ -98,22 +104,22 @@ export const buildAlertsBySeverityQuery = (params: TimeRangeParams): estypes.Sea
         filters: {
           critical: {
             query_string: {
-              query: 'tlsoc.alert.severity : "critical"',
+              query: 'tlsoc.alert.severity : "critical" OR kibana.alert.severity : "critical"',
             },
           },
           high: {
             query_string: {
-              query: 'tlsoc.alert.severity : "high"',
+              query: 'tlsoc.alert.severity : "high" OR kibana.alert.severity : "high"',
             },
           },
           medium: {
             query_string: {
-              query: 'tlsoc.alert.severity : "medium"',
+              query: 'tlsoc.alert.severity : "medium" OR kibana.alert.severity : "medium"',
             },
           },
           low: {
             query_string: {
-              query: 'tlsoc.alert.severity : "low"',
+              query: 'tlsoc.alert.severity : "low" OR kibana.alert.severity : "low"',
             },
           },
         },
@@ -305,9 +311,6 @@ export const buildRecentHighRiskQuery = (params: TimeRangeParams): estypes.Searc
   ignore_unavailable: true,
   expand_wildcards: ['open', 'hidden'],
   size: 20,
-  collapse: {
-    field: 'tlsoc.alert.id.keyword',
-  },
   runtime_mappings: {
     risk_score_normalized: {
       type: 'double',
@@ -358,28 +361,22 @@ export const buildRecentHighRiskQuery = (params: TimeRangeParams): estypes.Searc
     'kibana.alert.id',
     'user.name',
     'source.ip',
+    'source.address',
     'destination.ip',
+    'destination.address',
+    'observer.server',
+    'host.name',
     'message',
   ],
   query: {
     bool: {
       filter: [
         buildBaseTimeFilter(params),
+        buildOpenAlertsFilter(),
       ],
-      should: [
-        { range: { 'tlsoc.alert.risk_score': { gte: 70 } } },
-        { range: { 'kibana.alert.risk_score': { gte: 70 } } },
-        { term: { 'tlsoc.alert.status': 'active' } },
-        { range: { 'event.severity': { gte: 7 } } },
-      ],
-      // Keep high-risk clauses as preference signals, but do not exclude alerts
-      // that do not carry these fields in custom TLSOC pipelines.
-      minimum_should_match: 0,
     },
   },
   sort: [
-    { 'kibana.alert.risk_score': { order: 'desc', unmapped_type: 'double' } },
-    { risk_score: { order: 'desc', unmapped_type: 'double' } },
     { '@timestamp': { order: 'desc' } },
   ],
 });
@@ -395,21 +392,29 @@ export const buildSummaryCountsQuery = (params: TimeRangeParams): estypes.Search
   expand_wildcards: ['open', 'hidden'],
   query: {
     bool: {
-      filter: [buildBaseTimeFilter(params)],
+      filter: [buildBaseTimeFilter(params), buildOpenAlertsFilter()],
     },
   },
   aggs: {
-    total_open: {
+    total_matching_severity: {
       filter: {
         query_string: {
-          query: 'tlsoc.alert.status : "active" OR kibana.alert.status : "active" OR kibana.alert.workflow_status : "open"',
+          query:
+            'tlsoc.alert.severity : "critical" OR tlsoc.alert.severity : "high" OR tlsoc.alert.severity : "medium" OR tlsoc.alert.severity : "low" OR kibana.alert.severity : "critical" OR kibana.alert.severity : "high" OR kibana.alert.severity : "medium" OR kibana.alert.severity : "low"',
+        },
+      },
+    },
+    total_open: {
+      filter: {
+        term: {
+          'kibana.alert.workflow_status': 'open',
         },
       },
     },
     high_critical: {
       filter: {
         query_string: {
-          query: 'tlsoc.alert.severity : "high" OR tlsoc.alert.severity : "critical"',
+          query: 'tlsoc.alert.severity : "high" OR tlsoc.alert.severity : "critical" OR kibana.alert.severity : "high" OR kibana.alert.severity : "critical"',
         },
       },
     },

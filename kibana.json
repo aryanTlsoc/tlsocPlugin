@@ -1,7 +1,7 @@
 {
   "id": "tlsocPlugin",
   "version": "1.0.0",
-  "kibanaVersion": "kibana",
+  "kibanaVersion": "8.19.12",
   "owner": {
     "name": "soctl",
     "githubTeam": ""
